@@ -6,8 +6,12 @@ import {
   computed,
   effect,
   OnDestroy,
+  OnInit,
   model,
+  PLATFORM_ID,
+  inject,
 } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 export type TimeyState = 'idle' | 'running' | 'paused' | 'finished';
 
@@ -30,6 +34,15 @@ function formatTime(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+const STORAGE_KEY = 'timey-state';
+
+interface TimeySnapshot {
+  state: TimeyState;
+  remaining: number;
+  max: string;
+  savedAt: number; // Date.now()
 }
 
 @Component({
@@ -96,7 +109,7 @@ function formatTime(totalSeconds: number): string {
     `,
   ],
 })
-export class Timey implements OnDestroy {
+export class Timey implements OnInit, OnDestroy {
   /** Maximum time expressed as "MM:SS" or "HH:MM:SS". */
   readonly max = input<string>('60:00');
 
@@ -130,8 +143,12 @@ export class Timey implements OnDestroy {
   );
 
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  private readonly isBrowser: boolean;
 
   constructor() {
+    const platformId = inject(PLATFORM_ID);
+    this.isBrowser = isPlatformBrowser(platformId);
+
     // Sync remaining to max whenever max changes and timer is idle
     effect(() => {
       const m = this.maxSeconds();
@@ -146,10 +163,73 @@ export class Timey implements OnDestroy {
       if (!cmd) return;
       this.handleCommand(cmd);
     });
+
+    // Persist state on every change
+    effect(() => {
+      const snapshot: TimeySnapshot = {
+        state: this.state(),
+        remaining: this.remaining(),
+        max: this.max(),
+        savedAt: Date.now(),
+      };
+      this.saveSnapshot(snapshot);
+    });
+  }
+
+  ngOnInit() {
+    this.restoreFromSnapshot();
   }
 
   ngOnDestroy() {
     this.clearInterval();
+  }
+
+  // ── Persistence ──
+
+  private saveSnapshot(snapshot: TimeySnapshot) {
+    if (!this.isBrowser) return;
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    } catch { /* quota exceeded — ignore */ }
+  }
+
+  private restoreFromSnapshot() {
+    if (!this.isBrowser) return;
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const snap: TimeySnapshot = JSON.parse(raw);
+
+      if (snap.state === 'idle' || snap.state === 'finished') return;
+
+      if (snap.state === 'paused') {
+        this.remaining.set(Math.max(0, snap.remaining));
+        this.state.set('paused');
+        this.emit();
+        return;
+      }
+
+      // state was 'running' — account for elapsed time since snapshot
+      const elapsedSec = Math.floor((Date.now() - snap.savedAt) / 1000);
+      const adjusted = snap.remaining - elapsedSec;
+
+      if (adjusted <= 0) {
+        this.remaining.set(0);
+        this.state.set('finished');
+        this.emit();
+        return;
+      }
+
+      this.remaining.set(adjusted);
+      this.state.set('running');
+      this.emit();
+      this.startInterval();
+    } catch { /* corrupt data — ignore */ }
+  }
+
+  private clearSnapshot() {
+    if (!this.isBrowser) return;
+    try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }
 
   private handleCommand(cmd: string) {
@@ -195,6 +275,7 @@ export class Timey implements OnDestroy {
     this.clearInterval();
     this.remaining.set(this.maxSeconds());
     this.state.set('idle');
+    this.clearSnapshot();
     this.emit();
   }
 
