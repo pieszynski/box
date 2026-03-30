@@ -55,8 +55,8 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    ssl_certificate     /etc/nginx/certs/fullchain.pem;
-    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_certificate     /etc/nginx/certs/tls.crt;
+    ssl_certificate_key /etc/nginx/certs/tls.key;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
@@ -80,7 +80,7 @@ COPY <<'ENTRY' /docker-entrypoint.d/90-ssl-and-reload.sh
 set -e
 
 # Enable SSL config if certificates are mounted
-if [ -f /etc/nginx/certs/fullchain.pem ] && [ -f /etc/nginx/certs/privkey.pem ]; then
+if [ -f /etc/nginx/certs/tls.crt ] && [ -f /etc/nginx/certs/tls.key ]; then
     cp /etc/nginx/templates/ssl.conf.template /etc/nginx/conf.d/ssl.conf
     echo "SSL certificates found — HTTPS enabled on port 80"
 else
@@ -91,7 +91,7 @@ fi
 (
     while true; do
         sleep 21600
-        if [ -f /etc/nginx/certs/fullchain.pem ]; then
+        if [ -f /etc/nginx/certs/tls.crt ]; then
             nginx -s reload 2>/dev/null || true
             echo "$(date): nginx reloaded for certificate refresh"
         fi
