@@ -36,19 +36,14 @@ type Theme = 'light' | 'dark';
     }
 
     button {
-      background: var(--bg-surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      padding: 0.5rem 0.75rem;
       font-size: 1.25rem;
-      cursor: pointer;
-      transition: background-color 0.2s;
+      padding: 0.5rem 0.75rem;
     }
 
     button:hover {
-      background: var(--accent);
-      color: #fff;
+      background: var(--primary);
+      color: var(--primary-text);
+      border-color: var(--primary);
     }
   `],
 })
