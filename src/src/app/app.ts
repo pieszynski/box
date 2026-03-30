@@ -28,6 +28,7 @@ type Theme = 'light' | 'dark';
         <div class="timey-controls">
           <button class="btn-primary" (click)="timeyCommand.set('start')">Start</button>
           <button class="btn-primary" (click)="timeyCommand.set('start:20:00')">Start 20:00</button>
+          <button class="btn-primary" (click)="timeyCommand.set('start:3')">Start 3</button>
           <button (click)="timeyCommand.set('pause')">Pause</button>
           <button (click)="timeyCommand.set('resume')">Resume</button>
           <button (click)="timeyCommand.set('stop')">Stop</button>
@@ -115,6 +116,10 @@ export class App {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         this.theme.set(e.matches ? 'dark' : 'light');
       });
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
     }
   }
 
@@ -131,5 +136,29 @@ export class App {
 
   onTimeyTick(event: TimeyEvent) {
     this.timeyState.set(event.state);
+
+    if (event.state === 'finished') {
+      this.notifyFinished(event.max);
+    }
+  }
+
+  private notifyFinished(maxSeconds: number) {
+    if (!isPlatformBrowser(this.platformId)) return;
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const minutes = Math.floor(maxSeconds / 60);
+    const body = `${minutes} min box has finished \u{1F308}`;
+
+    const notification = new Notification('Box Timer', {
+      body,
+      icon: 'icons/icon-192x192.png',
+      badge: 'icons/icon-96x96.png',
+      tag: 'timey-finished',
+    } as NotificationOptions);
+
+    notification.addEventListener('click', () => {
+      window.focus();
+      notification.close();
+    });
   }
 }
