@@ -7,9 +7,30 @@ RUN npx ng build --configuration production
 
 FROM nginx:alpine
 COPY --from=build /app/dist/box/browser /usr/share/nginx/html
-COPY <<'EOF' /etc/nginx/conf.d/default.conf
+
+# Main nginx config with periodic cert reload
+COPY <<'MAIN' /etc/nginx/nginx.conf
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+    keepalive_timeout 65;
+    include       /etc/nginx/conf.d/*.conf;
+}
+MAIN
+
+# HTTP-only server (always active)
+COPY <<'HTTP' /etc/nginx/conf.d/default.conf
 server {
-    listen 80;
+    listen 81;
     server_name _;
     root /usr/share/nginx/html;
     index index.html;
@@ -23,5 +44,60 @@ server {
         add_header Cache-Control "public, immutable";
     }
 }
-EOF
-EXPOSE 80
+HTTP
+
+# HTTPS server template (activated when certs are mounted)
+COPY <<'SSL' /etc/nginx/templates/ssl.conf.template
+server {
+    listen 80 ssl;
+    http2 on;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|webmanifest)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}
+SSL
+
+# Entrypoint script: enable SSL if certs exist, reload nginx periodically
+COPY <<'ENTRY' /docker-entrypoint.d/90-ssl-and-reload.sh
+#!/bin/sh
+set -e
+
+# Enable SSL config if certificates are mounted
+if [ -f /etc/nginx/certs/fullchain.pem ] && [ -f /etc/nginx/certs/privkey.pem ]; then
+    cp /etc/nginx/templates/ssl.conf.template /etc/nginx/conf.d/ssl.conf
+    echo "SSL certificates found — HTTPS enabled on port 80"
+else
+    echo "No SSL certificates found — HTTPS disabled (HTTP-only on port 81)"
+fi
+
+# Background process: reload nginx every 6 hours to pick up rotated certs
+(
+    while true; do
+        sleep 21600
+        if [ -f /etc/nginx/certs/fullchain.pem ]; then
+            nginx -s reload 2>/dev/null || true
+            echo "$(date): nginx reloaded for certificate refresh"
+        fi
+    done
+) &
+ENTRY
+RUN chmod +x /docker-entrypoint.d/90-ssl-and-reload.sh
+
+EXPOSE 80 81
