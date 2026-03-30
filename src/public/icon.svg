@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- 270° open arc (dark orange), starting from top, gap at bottom-left quadrant -->
+  <path
+    d="M256 40
+       A216 216 0 1 1 103.17 408.83"
+    stroke="#e8700a"
+    stroke-width="40"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <!-- Sparkle at the trailing end (bottom-left end of arc) -->
+  <g transform="translate(103.17, 408.83)">
+    <!-- core glow -->
+    <circle r="8" fill="#fff" opacity="0.95"/>
+    <!-- sparkle rays -->
+    <line x1="0" y1="-18" x2="0" y2="-8" stroke="#ffe066" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="8" x2="0" y2="18" stroke="#ffe066" stroke-width="3" stroke-linecap="round"/>
+    <line x1="-18" y1="0" x2="-8" y2="0" stroke="#ffe066" stroke-width="3" stroke-linecap="round"/>
+    <line x1="8" y1="0" x2="18" y2="0" stroke="#ffe066" stroke-width="3" stroke-linecap="round"/>
+    <!-- diagonal rays -->
+    <line x1="-13" y1="-13" x2="-6" y2="-6" stroke="#ffd633" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="6" y1="6" x2="13" y2="13" stroke="#ffd633" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="6" y1="-6" x2="13" y2="-13" stroke="#ffd633" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-13" y1="13" x2="-6" y2="6" stroke="#ffd633" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- outer glow -->
+    <circle r="14" fill="#ffe066" opacity="0.25"/>
+  </g>
+  <!-- Number 84 in center -->
+  <text
+    x="256"
+    y="268"
+    text-anchor="middle"
+    dominant-baseline="central"
+    font-family="system-ui, -apple-system, Helvetica, Arial, sans-serif"
+    font-size="160"
+    font-weight="700"
+    fill="#e8700a"
+    letter-spacing="-6"
+  >84</text>
+</svg>

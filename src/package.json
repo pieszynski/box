@@ -24,7 +24,9 @@
     "@angular/build": "^21.2.5",
     "@angular/cli": "^21.2.5",
     "@angular/compiler-cli": "^21.2.0",
+    "png-to-ico": "^3.0.1",
     "prettier": "^3.8.1",
+    "sharp": "^0.34.5",
     "typescript": "~5.9.2"
   }
 }
