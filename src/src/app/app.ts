@@ -1,7 +1,7 @@
 import { Component, signal, computed, effect, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-import { Timey, TimeyEvent } from './timey/timey';
+import { Timey, TimeyEvent } from './timey';
 
 type Theme = 'light' | 'dark';
 
@@ -27,7 +27,7 @@ type Theme = 'light' | 'dark';
         </div>
         <div class="timey-controls">
           <button class="btn-primary" (click)="timeyCommand.set('start')">Start</button>
-          <button class="btn-primary" (click)="timeyCommand.set('start:15:00')">Start 15:00</button>
+          <button class="btn-primary" (click)="timeyCommand.set('start:20:00')">Start 20:00</button>
           <button (click)="timeyCommand.set('pause')">Pause</button>
           <button (click)="timeyCommand.set('resume')">Resume</button>
           <button (click)="timeyCommand.set('stop')">Stop</button>
