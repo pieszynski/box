@@ -46,8 +46,10 @@ server {
 }
 HTTP
 
-# HTTPS server template (activated when certs are mounted)
-COPY <<'SSL' /etc/nginx/templates/ssl.conf.template
+# HTTPS server template (activated only when certs are mounted)
+# Stored outside /etc/nginx/templates/ to prevent nginx's
+# built-in 20-envsubst-on-templates.sh from auto-enabling it.
+COPY <<'SSL' /etc/nginx/ssl.conf.template
 server {
     listen 80 ssl;
     http2 on;
@@ -81,9 +83,10 @@ set -e
 
 # Enable SSL config if certificates are mounted
 if [ -f /etc/nginx/certs/tls.crt ] && [ -f /etc/nginx/certs/tls.key ]; then
-    cp /etc/nginx/templates/ssl.conf.template /etc/nginx/conf.d/ssl.conf
+    cp /etc/nginx/ssl.conf.template /etc/nginx/conf.d/ssl.conf
     echo "SSL certificates found — HTTPS enabled on port 80"
 else
+    rm -f /etc/nginx/conf.d/ssl.conf
     echo "No SSL certificates found — HTTPS disabled (HTTP-only on port 81)"
 fi
 
