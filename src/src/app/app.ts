@@ -2,19 +2,23 @@ import { Component, signal, computed, effect, PLATFORM_ID, inject } from '@angul
 import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { Timey, TimeyEvent } from './timey';
+import { Settings } from './settings';
 
 type Theme = 'light' | 'dark';
 
 @Component({
   selector: 'box-root',
-  imports: [RouterOutlet, Timey],
+  imports: [RouterOutlet, Timey, Settings],
   template: `
     <div class="box-container">
       <header>
         <h1>Hello, {{ title() }}</h1>
-        <button (click)="toggleTheme()" [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' mode'">
-          {{ theme() === 'dark' ? '☀️' : '🌙' }}
-        </button>
+        <div class="header-actions">
+          <button (click)="toggleTheme()" [attr.aria-label]="'Switch to ' + (theme() === 'dark' ? 'light' : 'dark') + ' mode'">
+            {{ theme() === 'dark' ? '☀️' : '🌙' }}
+          </button>
+          <box-settings />
+        </div>
       </header>
 
       <section class="timey-demo">
@@ -50,6 +54,12 @@ type Theme = 'light' | 'dark';
       display: flex;
       align-items: center;
       justify-content: space-between;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
     }
 
     h1 {
@@ -117,9 +127,6 @@ export class App {
         this.theme.set(e.matches ? 'dark' : 'light');
       });
 
-      if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
-      }
     }
   }
 

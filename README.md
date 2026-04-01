@@ -2,6 +2,18 @@
 
 Angular PWA with a circular countdown timer, theming support, and system notifications.
 
+## Local development
+
+```bash
+cd src/
+
+# prepare certificates
+dotnet dev-certs https -ep .vscode/box.pem --format Pem --trust -np
+
+# run 
+npm start
+```
+
 ## Docker
 
 The image exposes two ports:
