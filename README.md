@@ -20,20 +20,20 @@ The image exposes two ports:
 
 | Port | Protocol | Active when |
 |------|----------|-------------|
-| **80** | HTTPS | `tls.crt` and `tls.key` are mounted |
-| **81** | HTTP | Always |
+| **80** | HTTP | Always |
+| **443** | HTTPS | `tls.crt` and `tls.key` are mounted |
 
 ### Run without TLS (HTTP only)
 
 ```bash
-docker run -d -p 3001:81 ghcr.io/pieszynski/box:latest
+docker run -d -p 3001:80 ghcr.io/pieszynski/box:latest
 ```
 
 App is available at `http://localhost:3001`.
 
 ---
 
-### Run with TLS (HTTPS on port 80, HTTP on port 81)
+### Run with TLS (HTTPS on port 443, HTTP on port 80)
 
 The container reads the certificate from the directory mounted at `/etc/nginx/certs/`.
 The directory **must** contain exactly these two files:
@@ -57,8 +57,8 @@ Then run:
 
 ```bash
 docker run -d \
-  -p 3005:80 \
-  -p 3001:81 \
+  -p 3005:443 \
+  -p 3001:80 \
   -v /path/to/certs:/etc/nginx/certs:ro \
   ghcr.io/pieszynski/box:latest
 ```
@@ -71,8 +71,8 @@ Useful when your cert manager places files in different locations (e.g. Let's En
 
 ```bash
 docker run -d \
-  -p 443:80 \
-  -p 80:81 \
+  -p 443:443 \
+  -p 80:80 \
   -v /etc/letsencrypt/live/example.com/fullchain.pem:/etc/nginx/certs/tls.crt:ro \
   -v /etc/letsencrypt/live/example.com/privkey.pem:/etc/nginx/certs/tls.key:ro \
   ghcr.io/pieszynski/box:latest
