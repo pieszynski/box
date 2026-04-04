@@ -30,7 +30,7 @@ MAIN
 # HTTP-only server (always active)
 COPY <<'HTTP' /etc/nginx/conf.d/default.conf
 server {
-    listen 81;
+    listen 80;
     server_name _;
     root /usr/share/nginx/html;
     index index.html;
@@ -51,7 +51,7 @@ HTTP
 # built-in 20-envsubst-on-templates.sh from auto-enabling it.
 COPY <<'SSL' /etc/nginx/ssl.conf.template
 server {
-    listen 80 ssl;
+    listen 443 ssl;
     http2 on;
     server_name _;
     root /usr/share/nginx/html;
@@ -84,10 +84,10 @@ set -e
 # Enable SSL config if certificates are mounted
 if [ -f /etc/nginx/certs/tls.crt ] && [ -f /etc/nginx/certs/tls.key ]; then
     cp /etc/nginx/ssl.conf.template /etc/nginx/conf.d/ssl.conf
-    echo "SSL certificates found — HTTPS enabled on port 80"
+    echo "SSL certificates found — HTTPS enabled on port 443"
 else
     rm -f /etc/nginx/conf.d/ssl.conf
-    echo "No SSL certificates found — HTTPS disabled (HTTP-only on port 81)"
+    echo "No SSL certificates found — HTTPS disabled (HTTP-only on port 80)"
 fi
 
 # Background process: reload nginx every 6 hours to pick up rotated certs
@@ -103,4 +103,4 @@ fi
 ENTRY
 RUN chmod +x /docker-entrypoint.d/90-ssl-and-reload.sh
 
-EXPOSE 80 81
+EXPOSE 80 443
