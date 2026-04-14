@@ -2,6 +2,18 @@
 
 Angular PWA with a circular countdown timer, theming support, and system notifications.
 
+## Table of contents
+
+- [Local development](#local-development)
+- [Docker](#docker)
+  - [Run without TLS](#run-without-tls-http-only)
+  - [Run with TLS](#run-with-tls-https-on-port-443-http-on-port-80)
+    - [Option A — mount a directory](#option-a--mount-a-directory)
+    - [Option B — mount individual files](#option-b--mount-individual-files)
+  - [Certificate rotation](#certificate-rotation-lets-encrypt--auto-renew)
+  - [Icon regeneration](#icon-regeneration)
+- [Logging & real client IP](#logging--real-client-ip)
+
 ## Local development
 
 ```bash
@@ -101,4 +113,102 @@ To regenerate `favicon.ico` and all PWA icons after editing `public/icon.svg`:
 ```bash
 cd src
 node generate-icons.mjs
+```
+
+---
+
+## Logging & real client IP
+
+By default Kubernetes pods receive internal cluster IPs (e.g. `10.42.0.8`) in nginx
+logs because the Ingress controller is the last TCP hop. The image is configured to
+resolve the real client IP automatically.
+
+### How it works
+
+#### 1. `ngx_http_realip_module`
+
+The nginx config trusts all private RFC-1918 ranges as proxies:
+
+```nginx
+set_real_ip_from  10.0.0.0/8;
+set_real_ip_from  172.16.0.0/12;
+set_real_ip_from  192.168.0.0/16;
+real_ip_header    X-Forwarded-For;
+real_ip_recursive on;
+```
+
+With `real_ip_recursive on`, nginx walks the `X-Forwarded-For` chain right-to-left,
+skipping every trusted proxy address, and sets `$remote_addr` to the first
+non-trusted (= real client) IP it finds.
+
+#### 2. Cloudflare headers (optional)
+
+When the cluster sits behind Cloudflare, two extra headers are available:
+
+| Header | Contents |
+|---|---|
+| `CF-Connecting-IP` | Single real client IP, most reliable |
+| `CF-IPCountry` | ISO 3166-1 alpha-2 country code (`PL`, `DE`, …) |
+
+The nginx config maps these into variables:
+
+```nginx
+map $http_cf_connecting_ip $real_client_ip {
+    ""      $remote_addr;          # no Cloudflare → fall back to resolved IP
+    default $http_cf_connecting_ip; # behind Cloudflare → use CF header
+}
+
+map $http_cf_ipcountry $client_country {
+    ""      -;                     # no Cloudflare → dash
+    default $http_cf_ipcountry;    # behind Cloudflare → country code
+}
+```
+
+#### 3. Log format
+
+```nginx
+log_format main '$real_client_ip $client_country [$time_local] "$request" '
+                '$status $body_bytes_sent "$http_referer" '
+                '"$http_user_agent"';
+```
+
+Resulting log lines:
+
+```
+# Behind Cloudflare
+203.0.113.45 PL [14/Apr/2026:20:34:17 +0000] "GET / HTTP/1.1" 200 2106 "-" "Mozilla/5.0 ..."
+
+# Direct / no Cloudflare
+203.0.113.45 - [14/Apr/2026:20:34:17 +0000] "GET / HTTP/1.1" 200 2106 "-" "Mozilla/5.0 ..."
+```
+
+### Required Kubernetes configuration
+
+For this to work the Ingress controller must forward `X-Forwarded-For` to backend pods.
+
+**Traefik (default in K3s/K3d)**
+
+Traefik passes `X-Forwarded-For` by default. If it doesn't, ensure the entrypoint
+has `forwardedHeaders.trustedIPs` set to your load balancer / Cloudflare IPs:
+
+**ingress-nginx ConfigMap** (`ingress-nginx` namespace):
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+data:
+  use-forwarded-headers: "true"
+  compute-full-forwarded-for: "true"
+  forwarded-for-header: "X-Forwarded-For"
+```
+
+**Ingress controller Service** — preserve source IP at the load-balancer level:
+
+```yaml
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
 ```

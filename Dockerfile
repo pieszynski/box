@@ -31,12 +31,21 @@ http {
     real_ip_header    X-Forwarded-For;
     real_ip_recursive on;
 
-    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+    # Use CF-Connecting-IP when available, fall back to $remote_addr
+    map $http_cf_connecting_ip $real_client_ip {
+        ""      $remote_addr;
+        default $http_cf_connecting_ip;
+    }
+
+    # Use CF-IPCountry when available, fall back to "-"
+    map $http_cf_ipcountry $client_country {
+        ""      -;
+        default $http_cf_ipcountry;
+    }
+
+    log_format main '$real_client_ip $client_country [$time_local] "$request" '
                     '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" '
-                    'xff="$http_x_forwarded_for" '
-                    'cf_ip="$http_cf_connecting_ip" '
-                    'cf_country="$http_cf_ipcountry"';
+                    '"$http_user_agent"';
     access_log /var/log/nginx/access.log main;
 
     include       /etc/nginx/conf.d/*.conf;
