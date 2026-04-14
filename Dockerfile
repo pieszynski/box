@@ -23,6 +23,22 @@ http {
     default_type  application/octet-stream;
     sendfile      on;
     keepalive_timeout 65;
+
+    # Trust Kubernetes internal proxies (ingress controller, service mesh)
+    set_real_ip_from  10.0.0.0/8;
+    set_real_ip_from  172.16.0.0/12;
+    set_real_ip_from  192.168.0.0/16;
+    real_ip_header    X-Forwarded-For;
+    real_ip_recursive on;
+
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" '
+                    'xff="$http_x_forwarded_for" '
+                    'cf_ip="$http_cf_connecting_ip" '
+                    'cf_country="$http_cf_ipcountry"';
+    access_log /var/log/nginx/access.log main;
+
     include       /etc/nginx/conf.d/*.conf;
 }
 MAIN
